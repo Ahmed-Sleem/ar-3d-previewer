@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>AI 3D Previewer – Trial 2</title>
+<title>AI 3D Previewer – Trial 3</title>
 <script type="module" src="vendor/model-viewer.min.js"></script>
 <style>
   :root { --ink:#1d2433; --muted:#667085; --line:#e4e7ec; --accent:#2f6f4f; --bg:#f6f5f1; }
@@ -12,7 +12,8 @@
   main { max-width: 760px; margin: 0 auto; padding: 16px 16px 40px; }
   h1 { font-size: 20px; margin: 4px 0 2px; }
   p.sub { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
-  .chips { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+  .chips { display:flex; gap:8px; overflow-x:auto; margin:0 -16px 12px; padding:2px 16px 6px; -webkit-overflow-scrolling:touch; }
+  .chips button { flex:0 0 auto; }
   .chips button { border:1px solid var(--line); background:#fff; color:var(--ink); padding:10px 14px; border-radius:999px; font-size:15px; cursor:pointer; }
   .chips button[aria-pressed="true"] { background:var(--ink); color:#fff; border-color:var(--ink); }
   model-viewer { width:100%; height: 56vh; min-height: 320px; max-height: 560px; background:#fff; border:1px solid var(--line); border-radius:16px; --poster-color: transparent; }
@@ -34,7 +35,7 @@
 <body>
 <main>
   <h1>AI 3D Previewer</h1>
-  <p class="sub">Trial 2 · rotate the item, then place it in your room at real size.</p>
+  <p class="sub">Trial 3 · rotate the item, then place it in your room at real size.</p>
 
   <div class="chips" id="chips"></div>
 
@@ -49,7 +50,7 @@
   </model-viewer>
 
   <!-- iPhone / iPad: Apple's own AR Quick Look link (same pattern apple.com uses) -->
-  <a id="iosAR" rel="ar" href="models/chair.usdz#allowsContentScaling=0" hidden>
+  <a id="iosAR" rel="ar" href="models/sofa.usdz#allowsContentScaling=0" hidden>
     <img alt="View in your room" width="260" height="52"
       src="assets/ar-button.svg">
   </a>
@@ -63,17 +64,20 @@
   </details>
 
   <footer>
-    Demo models are simple generated shapes at real-world size. Viewer: Google model-viewer.
+    Furniture models from Poly Haven (CC0), reduced in size for the web. Viewer: Google model-viewer.
   </footer>
 </main>
 
 <script>
 const MODELS = [
-  { name: 'Chair',       id: 'chair' },
-  { name: 'Coffee table', id: 'table' },
-  { name: 'Sofa',        id: 'sofa' },
-  { name: 'Bookshelf',   id: 'shelf' },
-  { name: 'Floor lamp',  id: 'lamp' },
+  { name: 'Leather sofa',  id: 'sofa' },
+  { name: 'Armchair',      id: 'armchair' },
+  { name: 'Lounge chair',  id: 'lounge' },
+  { name: 'Dining chair',  id: 'dining' },
+  { name: 'Round table',   id: 'roundtable' },
+  { name: 'Coffee table',  id: 'coffeetable' },
+  { name: 'Side table',    id: 'sidetable' },
+  { name: 'Shelving unit', id: 'shelves' },
 ];
 const iosAR = document.getElementById('iosAR');
 const bar = document.getElementById('bar');
@@ -128,7 +132,7 @@ document.addEventListener('visibilitychange', () => log('page ' + document.visib
   const quickLook = QUICK_LOOK;
   let webxr = false;
   try { webxr = !!(navigator.xr && await navigator.xr.isSessionSupported('immersive-ar')); } catch (e) {}
-  log('trial: 2');
+  log('trial: 3');
   log('ua: ' + ua);
   log('iOS=' + isIOS + ' quickLook=' + quickLook + ' webxrAR=' + webxr);
   log('expected path: ' + (webxr ? 'WebXR (in page)' : quickLook ? 'Apple Quick Look' : /Android/.test(ua) ? 'Scene Viewer' : '3D view only'));

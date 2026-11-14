@@ -1,0 +1,18 @@
+<!doctype html><meta charset="utf-8">
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { USDZExporter } from 'three/addons/exporters/USDZExporter.js';
+const b64 = u => { let s=''; for (let i=0;i<u.length;i+=0x8000) s+=String.fromCharCode(...u.subarray(i,i+0x8000)); return btoa(s); };
+window.convert = async (url, maxTex) => {
+  const gltf = await new GLTFLoader().loadAsync(url);
+  gltf.scene.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(gltf.scene); const size = box.getSize(new THREE.Vector3());
+  const mats = new Set(); gltf.scene.traverse(o => o.material && mats.add(o.material));
+  const info = [...mats].map(m => ({ n:m.name, type:m.type, transparent:m.transparent, alphaTest:m.alphaTest, side:m.side, maps:['map','normalMap','roughnessMap','metalnessMap','aoMap','emissiveMap','alphaMap'].filter(k=>m[k]) }));
+  const usdz = await new USDZExporter().parseAsync(gltf.scene, { quickLookCompatible:true, maxTextureSize:maxTex });
+  return { usdz:b64(new Uint8Array(usdz.buffer ?? usdz)), size:[size.x,size.y,size.z], minY:box.min.y, info };
+};
+window.ready = true;
+</script>
