@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>AI 3D Previewer – Trial 1</title>
+<title>AI 3D Previewer – Trial 2</title>
 <script type="module" src="vendor/model-viewer.min.js"></script>
 <style>
   :root { --ink:#1d2433; --muted:#667085; --line:#e4e7ec; --accent:#2f6f4f; --bg:#f6f5f1; }
@@ -17,6 +17,11 @@
   .chips button[aria-pressed="true"] { background:var(--ink); color:#fff; border-color:var(--ink); }
   model-viewer { width:100%; height: 56vh; min-height: 320px; max-height: 560px; background:#fff; border:1px solid var(--line); border-radius:16px; --poster-color: transparent; }
   .arbtn { position:absolute; left:50%; bottom:16px; transform:translateX(-50%); background:var(--accent); color:#fff; border:0; border-radius:999px; padding:14px 22px; font-size:16px; font-weight:600; white-space:nowrap; cursor:pointer; }
+  #bar { position:absolute; left:16px; right:16px; top:16px; height:4px; background:var(--line); border-radius:4px; overflow:hidden; }
+  #bar i { display:block; height:100%; width:0; background:var(--accent); transition:width .15s; }
+  #iosAR { display:block; text-align:center; margin-top:12px; }
+  #iosAR[hidden] { display:none; }
+  #iosAR img { display:inline-block; max-width:100%; height:auto; }
   .info { margin-top:12px; background:#fff; border:1px solid var(--line); border-radius:12px; padding:12px 14px; font-size:15px; }
   .info b { display:block; font-size:13px; color:var(--muted); font-weight:600; margin-bottom:2px; }
   #note { margin-top:12px; padding:12px 14px; border-radius:12px; background:#fff7e6; border:1px solid #f1d9a5; font-size:14px; display:none; }
@@ -29,18 +34,25 @@
 <body>
 <main>
   <h1>AI 3D Previewer</h1>
-  <p class="sub">Trial 1 · rotate the item, then place it in your room at real size.</p>
+  <p class="sub">Trial 2 · rotate the item, then place it in your room at real size.</p>
 
   <div class="chips" id="chips"></div>
 
   <model-viewer id="mv"
-    camera-controls touch-action="pan-y"
-    shadow-intensity="1" exposure="1"
-    ar ar-modes="webxr scene-viewer quick-look" ar-scale="fixed" ar-placement="floor"
+    camera-controls touch-action="pan-y" loading="eager"
+    shadow-intensity="1" exposure="1.1" camera-orbit="-30deg 75deg auto"
+    ar ar-modes="webxr scene-viewer" ar-scale="fixed" ar-placement="floor"
     xr-environment
     alt="3D furniture preview">
     <button slot="ar-button" class="arbtn">View in your room</button>
+    <div slot="progress-bar" id="bar"><i></i></div>
   </model-viewer>
+
+  <!-- iPhone / iPad: Apple's own AR Quick Look link (same pattern apple.com uses) -->
+  <a id="iosAR" rel="ar" href="models/chair.usdz#allowsContentScaling=0" hidden>
+    <img alt="View in your room" width="260" height="52"
+      src="assets/ar-button.svg">
+  </a>
 
   <div class="info"><b>Real size (width × height × depth)</b><span id="dims">Loading…</span></div>
   <div id="note"></div>
@@ -51,17 +63,21 @@
   </details>
 
   <footer>
-    Models: Sheen Chair (CC0) and Glam Velvet Sofa, Chair Damask Purplegold (CC-BY 4.0) from Khronos glTF Sample Assets.
-    Viewer: Google model-viewer.
+    Demo models are simple generated shapes at real-world size. Viewer: Google model-viewer.
   </footer>
 </main>
 
 <script>
 const MODELS = [
-  { name: 'Fabric chair',  src: 'models/SheenChair.glb' },
-  { name: 'Velvet sofa',   src: 'models/GlamVelvetSofa.glb' },
-  { name: 'Damask chair',  src: 'models/ChairDamaskPurplegold.glb' },
+  { name: 'Chair',       id: 'chair' },
+  { name: 'Coffee table', id: 'table' },
+  { name: 'Sofa',        id: 'sofa' },
+  { name: 'Bookshelf',   id: 'shelf' },
+  { name: 'Floor lamp',  id: 'lamp' },
 ];
+const iosAR = document.getElementById('iosAR');
+const bar = document.getElementById('bar');
+const QUICK_LOOK = document.createElement('a').relList.supports('ar');
 const mv = document.getElementById('mv');
 const logEl = document.getElementById('log');
 const dimsEl = document.getElementById('dims');
@@ -72,7 +88,9 @@ function log(msg) { lines.push(msg); logEl.textContent = lines.join('\n'); }
 
 function select(i) {
   dimsEl.textContent = 'Loading…';
-  mv.src = MODELS[i].src;
+  mv.src = 'models/' + MODELS[i].id + '.glb';
+  iosAR.href = 'models/' + MODELS[i].id + '.usdz#allowsContentScaling=0';
+  bar.style.display = 'block';
   [...chips.children].forEach((b, j) => b.setAttribute('aria-pressed', String(i === j)));
   log('model: ' + MODELS[i].name);
 }
@@ -83,12 +101,16 @@ MODELS.forEach((m, i) => {
   chips.appendChild(b);
 });
 
+iosAR.addEventListener('click', () => log('iOS AR link tapped: ' + iosAR.getAttribute('href')));
+mv.addEventListener('progress', e => { bar.firstElementChild.style.width = (e.detail.totalProgress * 100) + '%'; });
 mv.addEventListener('load', () => {
+  bar.style.display = 'none';
   const d = mv.getDimensions();
   const cm = v => Math.round(v * 100);
   dimsEl.textContent = cm(d.x) + ' × ' + cm(d.y) + ' × ' + cm(d.z) + ' cm';
-  log('loaded, size ' + dimsEl.textContent + ', canActivateAR=' + mv.canActivateAR);
-  if (!mv.canActivateAR) {
+  log('loaded, size ' + dimsEl.textContent + ', canActivateAR=' + mv.canActivateAR + ', ms=' + Math.round(performance.now()));
+  if (QUICK_LOOK) { iosAR.hidden = false; }
+  else if (!mv.canActivateAR) {
     noteEl.style.display = 'block';
     noteEl.textContent = 'AR is not available on this device or browser, so this is the 3D view only. On a phone, open this page in Safari (iPhone) or Chrome (Android).';
   }
@@ -103,10 +125,10 @@ document.addEventListener('visibilitychange', () => log('page ' + document.visib
 (async () => {
   const ua = navigator.userAgent;
   const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  const quickLook = document.createElement('a').relList.supports('ar');
+  const quickLook = QUICK_LOOK;
   let webxr = false;
   try { webxr = !!(navigator.xr && await navigator.xr.isSessionSupported('immersive-ar')); } catch (e) {}
-  log('trial: 1');
+  log('trial: 2');
   log('ua: ' + ua);
   log('iOS=' + isIOS + ' quickLook=' + quickLook + ' webxrAR=' + webxr);
   log('expected path: ' + (webxr ? 'WebXR (in page)' : quickLook ? 'Apple Quick Look' : /Android/.test(ua) ? 'Scene Viewer' : '3D view only'));
