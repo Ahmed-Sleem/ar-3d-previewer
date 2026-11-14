@@ -74,6 +74,10 @@ body.ar #exit{display:flex}
 #pct{font-size:34px;font-weight:400;font-variant-numeric:tabular-nums}
 .bar{width:180px;height:1px;background:var(--line);opacity:.5;position:relative}
 .bar b{position:absolute;left:0;top:-1.5px;height:4px;width:0;background:var(--ink);transition:width .15s}
+#mini{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;display:flex;flex-direction:column;align-items:center;gap:34px;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}
+#mini.on{opacity:1;visibility:visible}
+#blob{transition:opacity .3s}body.busy #blob{opacity:0}
+body.ar #mini{display:none!important}
 @media (max-width:820px){
  .hud{padding:0 20px;font-size:12px}.hud i{width:20px;margin:0 8px}.logo{margin-right:12px}
  #menuBtn{display:flex}#arBtn.ok,#arLink.ok{display:flex}
@@ -101,6 +105,9 @@ body.ar #exit{display:flex}
 <!-- iPhone / iPad: Apple AR Quick Look needs a real link whose only child is an image -->
 <a class="fab" id="arLink" rel="ar" href="models/sofa.usdz#allowsContentScaling=0"><img alt="View in AR" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></a>
 <div id="xr"><button class="fab" id="exit">✕ Exit AR</button><div id="toast"></div></div>
+<!-- shown in place of the object while a newly selected model loads -->
+<div id="mini"><div class="stage"><div class="cube"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+ <div class="pc"><small>Loading model</small><span id="pct2" style="font-size:34px;font-weight:400;font-variant-numeric:tabular-nums">0%</span></div><div class="bar"><b id="fill2"></b></div></div>
 
 <div id="side">
  <aside id="L"><h6>Objects</h6><div id="list"></div></aside>
@@ -158,10 +165,13 @@ addEventListener('resize',size);
 
 /* ===== loading ===== */
 const splash=$('#splash'),pct=$('#pct'),fillEl=$('#fill');let token=0,cur=-1,fit=1,realH=1;
-const setP=p=>{p=Math.round(p);pct.textContent=p+'%';fillEl.style.width=p+'%'};
+const mini=$('#mini'),pct2=$('#pct2'),fill2=$('#fill2');
+const setP=p=>{p=Math.round(p);pct.textContent=pct2.textContent=p+'%';fillEl.style.width=fill2.style.width=p+'%'};
+/* first load: full splash. later switches: loader in place of the object */
+const busy=on=>{mini.classList.toggle('on',on);document.body.classList.toggle('busy',on);holder.visible=!on};
 async function select(i){
- if(i===cur)return;const my=++token;cur=i;btns.forEach((b,k)=>b.classList.toggle('on',k==i));
- $('#idx').textContent=String(i+1).padStart(3,'0');setP(0);splash.classList.remove('off');
+ if(i===cur)return;const my=++token,first=cur<0;cur=i;btns.forEach((b,k)=>b.classList.toggle('on',k==i));
+ $('#idx').textContent=String(i+1).padStart(3,'0');setP(0);if(!first){busy(true);$('#dim').textContent='';$('#arLink').href=models[i].usdz+'#allowsContentScaling=0'}
  try{
   const obj=await models[i].load(setP);if(my!==token)return;
   holder.children.slice().forEach(o=>{o.traverse(n=>{n.geometry&&n.geometry.dispose();if(n.material){for(const k in n.material){const v=n.material[k];v&&v.isTexture&&v.dispose()}n.material.dispose()}});holder.remove(o)});
@@ -169,8 +179,8 @@ async function select(i){
   fit=s;realH=sz.y;$('#dim').innerHTML='<small>Size</small>'+[sz.x,sz.y,sz.z].map(v=>Math.round(v*100)).join(' × ')+' cm';
   arLink.href=models[i].usdz+'#allowsContentScaling=0';
   obj.position.sub(c);const w=new T.Group();w.add(obj);w.scale.setScalar(s);holder.add(w);
-  setP(100);setTimeout(()=>{if(my===token)splash.classList.add('off')},350);
- }catch(e){toast('Failed to load model');splash.classList.add('off')}
+  setP(100);setTimeout(()=>{if(my===token){splash.classList.add('off');busy(false)}},first?350:150);
+ }catch(e){if(my!==token)return;toast('Failed to load model');splash.classList.add('off');busy(false)}
 }
 
 /* ===== interaction ===== */
