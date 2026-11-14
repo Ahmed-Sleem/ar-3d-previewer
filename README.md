@@ -1,1 +1,1 @@
-https://ahmed-sleem.github.io/ai-3d-previewer/
+https://ahmed-sleem.github.io/ar-3d-previewer/

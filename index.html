@@ -1,142 +1,228 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>AI 3D Previewer – Trial 3</title>
-<script type="module" src="vendor/model-viewer.min.js"></script>
+<title>AR 3D Previewer</title>
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<meta name="theme-color" content="#e9eaee">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root { --ink:#1d2433; --muted:#667085; --line:#e4e7ec; --accent:#2f6f4f; --bg:#f6f5f1; }
-  * { box-sizing: border-box; }
-  body { margin:0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color:var(--ink); background:var(--bg); }
-  main { max-width: 760px; margin: 0 auto; padding: 16px 16px 40px; }
-  h1 { font-size: 20px; margin: 4px 0 2px; }
-  p.sub { margin: 0 0 12px; color: var(--muted); font-size: 14px; }
-  .chips { display:flex; gap:8px; overflow-x:auto; margin:0 -16px 12px; padding:2px 16px 6px; -webkit-overflow-scrolling:touch; }
-  .chips button { flex:0 0 auto; }
-  .chips button { border:1px solid var(--line); background:#fff; color:var(--ink); padding:10px 14px; border-radius:999px; font-size:15px; cursor:pointer; }
-  .chips button[aria-pressed="true"] { background:var(--ink); color:#fff; border-color:var(--ink); }
-  model-viewer { width:100%; height: 56vh; min-height: 320px; max-height: 560px; background:#fff; border:1px solid var(--line); border-radius:16px; --poster-color: transparent; }
-  .arbtn { position:absolute; left:50%; bottom:16px; transform:translateX(-50%); background:var(--accent); color:#fff; border:0; border-radius:999px; padding:14px 22px; font-size:16px; font-weight:600; white-space:nowrap; cursor:pointer; }
-  #bar { position:absolute; left:16px; right:16px; top:16px; height:4px; background:var(--line); border-radius:4px; overflow:hidden; }
-  #bar i { display:block; height:100%; width:0; background:var(--accent); transition:width .15s; }
-  #iosAR { display:block; text-align:center; margin-top:12px; }
-  #iosAR[hidden] { display:none; }
-  #iosAR img { display:inline-block; max-width:100%; height:auto; }
-  .info { margin-top:12px; background:#fff; border:1px solid var(--line); border-radius:12px; padding:12px 14px; font-size:15px; }
-  .info b { display:block; font-size:13px; color:var(--muted); font-weight:600; margin-bottom:2px; }
-  #note { margin-top:12px; padding:12px 14px; border-radius:12px; background:#fff7e6; border:1px solid #f1d9a5; font-size:14px; display:none; }
-  details { margin-top:16px; font-size:13px; }
-  summary { cursor:pointer; color:var(--muted); }
-  pre { background:#111827; color:#d1fae5; padding:12px; border-radius:10px; overflow:auto; white-space:pre-wrap; word-break:break-word; font-size:12px; }
-  footer { margin-top:20px; font-size:12px; color:var(--muted); }
+/* ===== THEME TOKENS: change colours here ===== */
+:root{--bg1:#e9eaee;--bg2:#d2d8df;--ink:#0a0c10;--mut:#7b818a;--line:rgba(10,12,16,.5);--card:rgba(255,255,255,.55);--grid:rgba(130,138,150,.28);
+padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box}
+:root[data-theme=dark]{--bg1:#2b2d33;--bg2:#1b1e24;--ink:#eef0f3;--mut:#8b919b;--line:rgba(238,240,243,.55);--card:rgba(255,255,255,.06);--grid:rgba(150,158,170,.14);color-scheme:dark}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{font:500 12px/1.2 Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:var(--ink);background:linear-gradient(var(--bg1) 0,var(--bg1) 36%,var(--bg2) 100%)}
+body.ar{background:transparent}
+body.ar #side,body.ar .hud,body.ar #blob,body.ar #floor,body.ar #arBtn,body.ar #arLink,body.ar #menuBtn,body.ar #read{display:none!important}
+#floor{position:fixed;left:0;right:0;top:38%;bottom:0;pointer-events:none;
+background:repeating-linear-gradient(90deg,transparent 0 79px,var(--grid) 79px 80px),repeating-linear-gradient(0deg,transparent 0 79px,var(--grid) 79px 80px);
+-webkit-mask-image:linear-gradient(transparent,#000 40%);mask-image:linear-gradient(transparent,#000 40%)}
+canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
+canvas:active{cursor:grabbing}
+.hud{position:fixed;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:0 26px;pointer-events:none;font-size:14px;z-index:3}
+.hud.t{top:calc(env(safe-area-inset-top,0px) + 22px)}
+.hud.b{bottom:calc(env(safe-area-inset-bottom,0px) + 26px)}
+.hud i{display:inline-block;width:36px;height:1px;background:var(--ink);vertical-align:middle;margin:0 14px}
+.brand{display:flex;align-items:center}
+.logo{border:1px solid var(--ink);width:44px;height:44px;padding:5px 6px;font-size:10px;line-height:1.05;font-weight:600;display:flex;flex-direction:column;justify-content:flex-end;margin-right:18px}
+#blob{position:fixed;left:50%;top:66%;width:min(260px,44vw);aspect-ratio:2/.45;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.28),transparent);filter:blur(8px);pointer-events:none}
+#read{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 56px);transform:translateX(-50%);text-align:center;pointer-events:none}
+#read small{display:block;color:var(--mut);font-size:11px;margin-bottom:6px}
+#read b{font-size:24px;font-weight:400}
+h6{font-size:11px;font-weight:500;color:var(--mut);margin-bottom:14px}
+#side{display:contents}
+aside{position:fixed;z-index:4}
+#L{left:64px;top:calc(env(safe-area-inset-top,0px) + 150px);width:170px}
+#R{right:64px;top:calc(env(safe-area-inset-top,0px) + 150px);width:120px}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+#list{display:flex;flex-direction:column;gap:5px;margin-left:-10px;max-height:60vh;overflow:auto}
+.it{display:flex;align-items:center;gap:14px;height:36px;padding:0 10px;font-size:11px;text-align:left;transition:.2s;flex:none;width:170px}
+.it svg{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.3;stroke-linejoin:round}
+.it:hover{background:rgba(10,12,16,.07)}
+.it.on{background:var(--ink);color:var(--bg1);font-weight:600;font-size:12px}
+.sl{margin-bottom:26px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:18px;background:linear-gradient(var(--line),var(--line)) center/100% 1px no-repeat;outline:0;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:34px;height:4px;background:var(--ink);border-radius:2px}
+input[type=range]::-moz-range-thumb{width:34px;height:4px;background:var(--ink);border:0;border-radius:2px}
+.fab{position:fixed;z-index:6;display:none;align-items:center;gap:8px;height:38px;padding:0 16px;border:1px solid var(--ink);background:var(--card);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);font-size:12px;font-weight:600}
+#arBtn{right:20px;top:calc(env(safe-area-inset-top,0px) + 80px)}
+#arLink{right:20px;top:calc(env(safe-area-inset-top,0px) + 80px);color:inherit;text-decoration:none}
+#arLink::before{content:"\2B21  View in AR"}
+#arLink img{position:absolute;inset:0;width:100%;height:100%}
+#dim small{color:var(--mut);font-size:11px;margin-right:10px}
+#menuBtn{left:20px;top:calc(env(safe-area-inset-top,0px) + 80px)}
+#exit{display:none;right:20px;top:calc(env(safe-area-inset-top,0px) + 20px)}
+body.ar #exit{display:flex}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:var(--bg1);padding:10px 16px;opacity:0;pointer-events:none;transition:.3s;z-index:30;max-width:80vw;text-align:center}
+#toast.s{opacity:1}
+/* splash / loader */
+#splash{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:34px;background:linear-gradient(var(--bg1) 0,var(--bg1) 36%,var(--bg2) 100%);transition:opacity .6s,visibility .6s}
+#splash.off{opacity:0;visibility:hidden;pointer-events:none}
+.stage{perspective:500px;width:54px;height:54px}
+.cube{width:54px;height:54px;position:relative;transform-style:preserve-3d;animation:sp 4s linear infinite}
+.cube i{position:absolute;inset:0;border:1.5px solid var(--ink);background:rgba(255,255,255,.25)}
+.cube i:nth-child(1){transform:translateZ(27px)}.cube i:nth-child(2){transform:rotateY(180deg) translateZ(27px)}
+.cube i:nth-child(3){transform:rotateY(90deg) translateZ(27px)}.cube i:nth-child(4){transform:rotateY(-90deg) translateZ(27px)}
+.cube i:nth-child(5){transform:rotateX(90deg) translateZ(27px)}.cube i:nth-child(6){transform:rotateX(-90deg) translateZ(27px)}
+@keyframes sp{from{transform:rotateX(-28deg) rotateY(0)}to{transform:rotateX(-28deg) rotateY(360deg)}}
+.pc{text-align:center}
+.pc small{display:block;color:var(--mut);font-size:11px;margin-bottom:8px}
+#pct{font-size:34px;font-weight:400;font-variant-numeric:tabular-nums}
+.bar{width:180px;height:1px;background:var(--line);opacity:.5;position:relative}
+.bar b{position:absolute;left:0;top:-1.5px;height:4px;width:0;background:var(--ink);transition:width .15s}
+@media (max-width:820px){
+ .hud{padding:0 20px;font-size:12px}.hud i{width:20px;margin:0 8px}.logo{margin-right:12px}
+ #menuBtn{display:flex}#arBtn.ok,#arLink.ok{display:flex}
+ #side{display:flex;flex-direction:column;gap:22px;position:fixed;left:0;right:0;bottom:0;z-index:5;padding:26px 24px calc(env(safe-area-inset-bottom,0px) + 26px);max-height:72vh;overflow:auto;background:var(--card);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border-top:1px solid var(--line);transform:translateY(105%);transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+ #side.open{transform:none}
+ aside{position:static;width:auto!important}
+ #list{flex-direction:row;flex-wrap:wrap;margin:0;max-height:none}
+ .it{width:auto;border:1px solid var(--line);height:34px}
+ .sl{margin-bottom:14px}
+ #blob{top:64%}
+}
+@media (pointer:coarse){#arBtn.ok,#arLink.ok{display:flex}}
+@media (min-width:821px) and (max-width:1100px){#L{left:30px}#R{right:30px}}
 </style>
 </head>
 <body>
-<main>
-  <h1>AI 3D Previewer</h1>
-  <p class="sub">Trial 3 · rotate the item, then place it in your room at real size.</p>
+<div id="floor"></div><div id="blob"></div><canvas id="c"></canvas>
+<div id="read"><small>Rotation</small><b id="deg">0°</b></div>
 
-  <div class="chips" id="chips"></div>
+<div class="hud t"><div class="brand"><div class="logo">AR<br>3D<br>VIEW</div><span><span id="dw"></span><i></i><span id="dt"></span></span></div><span id="yr"></span></div>
+<div class="hud b"><span id="dim"></span><span id="idx">001</span></div>
 
-  <model-viewer id="mv"
-    camera-controls touch-action="pan-y" loading="eager"
-    shadow-intensity="1" exposure="1.1" camera-orbit="-30deg 75deg auto"
-    ar ar-modes="webxr scene-viewer" ar-scale="fixed" ar-placement="floor"
-    xr-environment
-    alt="3D furniture preview">
-    <button slot="ar-button" class="arbtn">View in your room</button>
-    <div slot="progress-bar" id="bar"><i></i></div>
-  </model-viewer>
+<button class="fab" id="menuBtn">Menu</button>
+<button class="fab" id="arBtn">⬡ View in AR</button>
+<!-- iPhone / iPad: Apple AR Quick Look needs a real link whose only child is an image -->
+<a class="fab" id="arLink" rel="ar" href="models/sofa.usdz#allowsContentScaling=0"><img alt="View in AR" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></a>
+<div id="xr"><button class="fab" id="exit">✕ Exit AR</button><div id="toast"></div></div>
 
-  <!-- iPhone / iPad: Apple's own AR Quick Look link (same pattern apple.com uses) -->
-  <a id="iosAR" rel="ar" href="models/sofa.usdz#allowsContentScaling=0" hidden>
-    <img alt="View in your room" width="260" height="52"
-      src="assets/ar-button.svg">
-  </a>
+<div id="side">
+ <aside id="L"><h6>Objects</h6><div id="list"></div></aside>
+ <aside id="R">
+  <h6>Axis</h6>
+  <div class="sl"><h6>X axis</h6><input type="range" id="sx" min="-80" max="80" step="1" value="0" aria-label="X axis"></div>
+  <div class="sl"><h6>Y axis</h6><input type="range" id="sy" min="0" max="360" step="1" value="0" aria-label="Y axis"></div>
+  <div class="sl"><h6>Theme: Light / Dark</h6><input type="range" id="th" min="0" max="1" step="1" value="0" aria-label="Theme light or dark"></div>
+ </aside>
+</div>
 
-  <div class="info"><b>Real size (width × height × depth)</b><span id="dims">Loading…</span></div>
-  <div id="note"></div>
+<div id="splash"><div class="stage"><div class="cube"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+ <div class="pc"><small>Loading model</small><span id="pct">0%</span></div><div class="bar"><b id="fill"></b></div></div>
 
-  <details open>
-    <summary>Test report (send this back after testing)</summary>
-    <pre id="log"></pre>
-  </details>
-
-  <footer>
-    Furniture models from Poly Haven (CC0), reduced in size for the web. Viewer: Google model-viewer.
-  </footer>
-</main>
-
+<script src="vendor/three.min.js"></script>
+<script src="vendor/GLTFLoader.js"></script>
+<script src="vendor/RoomEnvironment.js"></script>
 <script>
-const MODELS = [
-  { name: 'Leather sofa',  id: 'sofa' },
-  { name: 'Armchair',      id: 'armchair' },
-  { name: 'Lounge chair',  id: 'lounge' },
-  { name: 'Dining chair',  id: 'dining' },
-  { name: 'Round table',   id: 'roundtable' },
-  { name: 'Coffee table',  id: 'coffeetable' },
-  { name: 'Side table',    id: 'sidetable' },
-  { name: 'Shelving unit', id: 'shelves' },
-];
-const iosAR = document.getElementById('iosAR');
-const bar = document.getElementById('bar');
-const QUICK_LOOK = document.createElement('a').relList.supports('ar');
-const mv = document.getElementById('mv');
-const logEl = document.getElementById('log');
-const dimsEl = document.getElementById('dims');
-const noteEl = document.getElementById('note');
-const chips = document.getElementById('chips');
-const lines = [];
-function log(msg) { lines.push(msg); logEl.textContent = lines.join('\n'); }
+(()=>{
+const $=s=>document.querySelector(s),T=THREE;
+const d=new Date();$('#dw').textContent=d.toLocaleString('en',{weekday:'short'});$('#dt').textContent=d.getDate()+' '+d.toLocaleString('en',{month:'long'});$('#yr').textContent=d.getFullYear();
 
-function select(i) {
-  dimsEl.textContent = 'Loading…';
-  mv.src = 'models/' + MODELS[i].id + '.glb';
-  iosAR.href = 'models/' + MODELS[i].id + '.usdz#allowsContentScaling=0';
-  bar.style.display = 'block';
-  [...chips.children].forEach((b, j) => b.setAttribute('aria-pressed', String(i === j)));
-  log('model: ' + MODELS[i].name);
+/* ===== MODEL CATALOG: replace/extend this list =====
+   Each item: name, icon (svg path), id -> models/<id>.glb (viewer + Android AR) and models/<id>.usdz (iPhone AR).
+   Models are authored in metres, so AR shows them at real size. */
+const loadGLB=url=>on=>new Promise((ok,no)=>{let p=0;const t=setInterval(()=>{p=Math.min(90,p+6);on(p)},80);
+ new T.GLTFLoader().load(url,g=>{clearInterval(t);ok(g.scene)},e=>{if(e.total){p=Math.max(p,e.loaded/e.total*100);on(p)}},e=>{clearInterval(t);no(e)})});
+const models=[
+ ['Leather sofa','sofa','<path d="M5 11V8a2 2 0 012-2h10a2 2 0 012 2v3M3 13a2 2 0 014 0v2h10v-2a2 2 0 014 0v4H3zM6 17v2M18 17v2"/>'],
+ ['Armchair','armchair','<path d="M7 10V6h10v4M4 10h3v5h10v-5h3v8H4zM7 18v2M17 18v2"/>'],
+ ['Lounge chair','lounge','<path d="M6 4l3 10h8M9 14l-1 3M12 14v6M8 20h8"/>'],
+ ['Dining chair','dining','<path d="M8 3v18M8 4h8v9H8M16 13v8"/>'],
+ ['Round table','roundtable','<ellipse cx="12" cy="8" rx="9" ry="3"/><path d="M12 11v9M8 20h8"/>'],
+ ['Coffee table','coffeetable','<path d="M3 9h18v3H3zM5 12v7M19 12v7"/>'],
+ ['Side table','sidetable','<path d="M6 5h12v14M6 5v14M6 12h12M6 18h12"/>'],
+ ['Shelving unit','shelves','<path d="M5 3h14v18H5zM5 9h14M5 15h14M12 3v18"/>']
+].map(([name,id,icon])=>({name,id,icon,glb:'models/'+id+'.glb',usdz:'models/'+id+'.usdz',load:loadGLB('models/'+id+'.glb')}));
+
+/* ===== UI list ===== */
+const list=$('#list'),btns=models.map((m,i)=>{const b=document.createElement('button');b.className='it';b.innerHTML='<svg viewBox="0 0 24 24">'+m.icon+'</svg><span>'+m.name+'</span>';b.onclick=()=>{select(i);if(innerWidth<=820){side.classList.remove('open');$('#menuBtn').textContent='Menu'}};list.append(b);return b});
+
+/* ===== three ===== */
+const cv=$('#c'),r=new T.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+r.setPixelRatio(Math.min(devicePixelRatio,2));r.xr.enabled=true;r.outputEncoding=T.sRGBEncoding;
+const scene=new T.Scene(),cam=new T.PerspectiveCamera(32,1,.01,50);
+const group=new T.Group(),holder=new T.Group();group.add(holder);scene.add(group);
+/* lights: edit here */
+scene.environment=new T.PMREMGenerator(r).fromScene(new T.RoomEnvironment(),.04).texture; /* soft reflections for leather and metal */
+scene.add(new T.HemisphereLight(0xffffff,0x9aa2ac,.35));
+const key=new T.DirectionalLight(0xffffff,.9);key.position.set(3,5,4);scene.add(key);
+const fill=new T.DirectionalLight(0xffffff,.25);fill.position.set(-4,-1,2);scene.add(fill);
+function size(){r.setSize(innerWidth,innerHeight,false);cam.aspect=innerWidth/innerHeight;
+ cam.position.set(0,0,innerWidth<=820?(innerWidth<innerHeight?13.5:9):8);cam.updateProjectionMatrix()}
+addEventListener('resize',size);
+
+/* ===== loading ===== */
+const splash=$('#splash'),pct=$('#pct'),fillEl=$('#fill');let token=0,cur=-1,fit=1,realH=1;
+const setP=p=>{p=Math.round(p);pct.textContent=p+'%';fillEl.style.width=p+'%'};
+async function select(i){
+ if(i===cur)return;const my=++token;cur=i;btns.forEach((b,k)=>b.classList.toggle('on',k==i));
+ $('#idx').textContent=String(i+1).padStart(3,'0');setP(0);splash.classList.remove('off');
+ try{
+  const obj=await models[i].load(setP);if(my!==token)return;
+  holder.children.slice().forEach(o=>{o.traverse(n=>{n.geometry&&n.geometry.dispose();if(n.material){for(const k in n.material){const v=n.material[k];v&&v.isTexture&&v.dispose()}n.material.dispose()}});holder.remove(o)});
+  const bb=new T.Box3().setFromObject(obj),c=bb.getCenter(new T.Vector3()),sz=bb.getSize(new T.Vector3()),s=2.6/Math.max(...sz.toArray());
+  fit=s;realH=sz.y;$('#dim').innerHTML='<small>Size</small>'+[sz.x,sz.y,sz.z].map(v=>Math.round(v*100)).join(' × ')+' cm';
+  arLink.href=models[i].usdz+'#allowsContentScaling=0';
+  obj.position.sub(c);const w=new T.Group();w.add(obj);w.scale.setScalar(s);holder.add(w);
+  setP(100);setTimeout(()=>{if(my===token)splash.classList.add('off')},350);
+ }catch(e){toast('Failed to load model');splash.classList.add('off')}
 }
-MODELS.forEach((m, i) => {
-  const b = document.createElement('button');
-  b.textContent = m.name;
-  b.onclick = () => select(i);
-  chips.appendChild(b);
-});
 
-iosAR.addEventListener('click', () => log('iOS AR link tapped: ' + iosAR.getAttribute('href')));
-mv.addEventListener('progress', e => { bar.firstElementChild.style.width = (e.detail.totalProgress * 100) + '%'; });
-mv.addEventListener('load', () => {
-  bar.style.display = 'none';
-  const d = mv.getDimensions();
-  const cm = v => Math.round(v * 100);
-  dimsEl.textContent = cm(d.x) + ' × ' + cm(d.y) + ' × ' + cm(d.z) + ' cm';
-  log('loaded, size ' + dimsEl.textContent + ', canActivateAR=' + mv.canActivateAR + ', ms=' + Math.round(performance.now()));
-  if (QUICK_LOOK) { iosAR.hidden = false; }
-  else if (!mv.canActivateAR) {
-    noteEl.style.display = 'block';
-    noteEl.textContent = 'AR is not available on this device or browser, so this is the 3D view only. On a phone, open this page in Safari (iPhone) or Chrome (Android).';
-  }
-});
-mv.addEventListener('error', e => log('ERROR: ' + (e.detail && (e.detail.type || JSON.stringify(e.detail)))));
-mv.addEventListener('ar-status', e => log('ar-status: ' + e.detail.status));
-mv.addEventListener('ar-tracking', e => log('ar-tracking: ' + e.detail.status));
-mv.addEventListener('quick-look-button-tapped', () => log('quick-look-button-tapped'));
-window.addEventListener('error', e => log('JS ERROR: ' + e.message));
-document.addEventListener('visibilitychange', () => log('page ' + document.visibilityState));
+/* ===== interaction ===== */
+let rx=.4,ry=-.6,down=0,lx,ly,spin=true;const sx=$('#sx'),sy=$('#sy');
+cv.addEventListener('pointerdown',e=>{down=1;spin=false;lx=e.clientX;ly=e.clientY;cv.setPointerCapture(e.pointerId);side.classList.remove('open');$('#menuBtn').textContent='Menu'});
+cv.addEventListener('pointerup',()=>down=0);
+cv.addEventListener('pointermove',e=>{if(!down)return;ry+=(e.clientX-lx)*.01;rx=Math.max(-1.4,Math.min(1.4,rx+(e.clientY-ly)*.01));lx=e.clientX;ly=e.clientY});
+sx.oninput=()=>{spin=false;rx=sx.value*Math.PI/180};
+sy.oninput=()=>{spin=false;ry=sy.value*Math.PI/180};
+$('#th').oninput=e=>{document.documentElement.dataset.theme=e.target.value==='1'?'dark':'light'};
+const deg=$('#deg');
+function frame(t,f){
+ if(spin&&!r.xr.isPresenting)ry+=.004;
+ holder.rotation.set(r.xr.isPresenting?0:rx,ry,0);
+ const a=Math.round(((ry*180/Math.PI)%360+360)%360);
+ deg.textContent=a+'°';sy.value=a;sx.value=Math.round(rx*180/Math.PI);
+ if(f&&hit){const h=f.getHitTestResults(hit);if(h.length){reticle.visible=true;reticle.matrix.fromArray(h[0].getPose(r.xr.getReferenceSpace()).transform.matrix)}else reticle.visible=false}
+ r.render(scene,cam);
+}
 
-(async () => {
-  const ua = navigator.userAgent;
-  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  const quickLook = QUICK_LOOK;
-  let webxr = false;
-  try { webxr = !!(navigator.xr && await navigator.xr.isSessionSupported('immersive-ar')); } catch (e) {}
-  log('trial: 3');
-  log('ua: ' + ua);
-  log('iOS=' + isIOS + ' quickLook=' + quickLook + ' webxrAR=' + webxr);
-  log('expected path: ' + (webxr ? 'WebXR (in page)' : quickLook ? 'Apple Quick Look' : /Android/.test(ua) ? 'Scene Viewer' : '3D view only'));
-  select(0);
+/* ===== AR (WebXR, Android Chrome) ===== */
+let hit=null;
+const reticle=new T.Mesh(new T.RingGeometry(.07,.09,32).rotateX(-Math.PI/2),new T.MeshBasicMaterial({color:0xffffff}));
+reticle.matrixAutoUpdate=false;reticle.visible=false;scene.add(reticle);
+const toast=m=>{const t=$('#toast');t.textContent=m;t.classList.add('s');setTimeout(()=>t.classList.remove('s'),3200)};
+const arLink=$('#arLink'),QL=document.createElement('a').relList.supports('ar');
+/* iPhone/iPad -> Quick Look link, everything else touch -> AR button */
+if(matchMedia('(pointer:coarse)').matches||innerWidth<=820)(QL?arLink:$('#arBtn')).classList.add('ok');
+$('#exit').addEventListener('beforexrselect',e=>e.preventDefault());
+$('#arBtn').onclick=async()=>{
+ const m=models[cur],android=/Android/i.test(navigator.userAgent);
+ if(!navigator.xr||!(await navigator.xr.isSessionSupported('immersive-ar').catch(()=>0))){
+  if(!android)return toast('AR is not available in this browser. Use Safari on iPhone or Chrome on Android.');
+  /* Android without WebXR: hand the model to Google Scene Viewer at real size */
+  const f=new URL(m.glb,location.href).href;
+  location.href='intent://arvr.google.com/scene-viewer/1.0?file='+encodeURIComponent(f)+'&mode=ar_only&resizable=false&title='+encodeURIComponent(m.name)+'#Intent;scheme=https;package=com.google.android.googlequicksearchbox;action=android.intent.action.VIEW;S.browser_fallback_url='+encodeURIComponent(location.href)+';end;';
+  return;
+ }
+ try{
+  const s=await navigator.xr.requestSession('immersive-ar',{requiredFeatures:['hit-test'],optionalFeatures:['dom-overlay'],domOverlay:{root:$('#xr')}});
+  document.body.classList.add('ar');r.xr.setReferenceSpaceType('local');await r.xr.setSession(s);
+  spin=false;group.scale.setScalar(1/fit);group.position.set(0,0,0);group.visible=false; /* 1/fit = real size in metres */
+  hit=await s.requestHitTestSource({space:await s.requestReferenceSpace('viewer')});
+  toast('Move phone to find the floor, then tap to place');
+  s.addEventListener('select',()=>{if(reticle.visible){group.position.setFromMatrixPosition(reticle.matrix);group.position.y+=realH/2;group.visible=true}});
+  s.addEventListener('end',()=>{hit=null;reticle.visible=false;group.scale.setScalar(1);group.position.set(0,0,0);group.visible=true;document.body.classList.remove('ar');size()});
+  $('#exit').onclick=()=>s.end();
+ }catch(e){toast('Could not start AR.')}
+};
+
+const side=$('#side');$('#menuBtn').onclick=()=>{side.classList.toggle('open');$('#menuBtn').textContent=side.classList.contains('open')?'Close':'Menu'};
+size();r.setAnimationLoop(frame);select(0);
 })();
 </script>
 </body>
